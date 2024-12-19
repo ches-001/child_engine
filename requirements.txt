@@ -1,0 +1,2 @@
+kaggle-environments==1.16.6
+pybind11==2.13.6

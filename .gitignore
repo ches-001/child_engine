@@ -1,0 +1,10 @@
+.vscode
+extern/pybind11
+executables
+build
+unix_build
+windows_build
+*.exe
+main.cpp
+to_build.instruction.txt
+**/__pycache__
