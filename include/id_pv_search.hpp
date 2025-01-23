@@ -7,24 +7,24 @@
 #include "../extern/chess.hpp"
 
 
-class IterativeDeepeningPVSearch{
+class ID_PVSearch{
 
     private:
         bool timedout_;
 
         int current_search_depth_;
 
-        chess::Board board_;
-
         uint64_t timelimit_ms_;
         
-        std::chrono::steady_clock::time_point start_;
+        std::chrono::steady_clock::time_point start_time_;
 
         PVLine pv_moves_;
 
         chess::Move best_move_;
 
         int16_t best_score_;
+        
+        chess::Board *board_;
 
         map_t<uint64_t, TTEntry> *tt_;
         
@@ -50,7 +50,7 @@ class IterativeDeepeningPVSearch{
             _set_timedout();
             
             int16_t alpha_orig = alpha;
-            uint64_t hash = board_.hash();
+            uint64_t hash = board_->hash();
             chess::Move tt_move = chess::Move::NO_MOVE;
 
             if(tt_){
@@ -80,8 +80,8 @@ class IterativeDeepeningPVSearch{
             search_result.move = best_move;
             chess::Movelist legal_moves = _legal_moves(depth, is_pv_node);
 
-            if(legal_moves.empty() || board_.isHalfMoveDraw()){
-                if(board_.inCheck()){
+            if(legal_moves.empty() || board_->isHalfMoveDraw()){
+                if(board_->inCheck()){
                     search_result.score = color *  Constants::CHECKMATE_SCORE;
                     return search_result;
                 }
@@ -89,7 +89,7 @@ class IterativeDeepeningPVSearch{
                 return search_result;
             }
             if(depth == 0 || timedout_){
-                search_result.score = color * evaluate_board_state(board_);
+                search_result.score = color * evaluate_board_state(*board_);
                 return search_result;
             }
             
@@ -100,12 +100,12 @@ class IterativeDeepeningPVSearch{
             for(int i=0; i < legal_moves.size(); i++){
                 select_move(legal_moves, i);
                 child_move = legal_moves[i];
-                board_.makeMove(child_move);
+                board_->makeMove(child_move);
                 
                 search_result = _search(-color, depth-1, -beta, -alpha, child_pv_moves, i==0 ? is_pv_node : false);
                 search_result.score = -search_result.score;
 
-                board_.unmakeMove(child_move);
+                board_->unmakeMove(child_move);
 
                 // set best score to beta if beta cutoff occurs, making this node a fail-high / lowerbound node
                 // The intuition here is that if the score >= beta, it means the maximizer has found a move that
@@ -121,7 +121,7 @@ class IterativeDeepeningPVSearch{
                     // given ply will probably be a good move at that ply, as such we can order it to be one of the 
                     // first few moves to be explored by the algorithm.
                     if(
-                        !board_.isCapture(best_move) 
+                        !board_->isCapture(best_move) 
                         && best_move.typeOf() != chess::Move::PROMOTION
                         && best_move.typeOf() != chess::Move::CASTLING){
                         store_killer_move(&km_table_, best_move, current_search_depth_-depth);
@@ -169,7 +169,7 @@ class IterativeDeepeningPVSearch{
             // various conditions, like whether the move is a PV move or a move from the transposition table, or whether
             // move is a capture or whatever...
             chess::Movelist legal_moves;
-            chess::movegen::legalmoves(legal_moves, board_);
+            chess::movegen::legalmoves(legal_moves, *board_);
             if(legal_moves.empty()){
                 return legal_moves;
             }
@@ -180,33 +180,31 @@ class IterativeDeepeningPVSearch{
             if(is_pv_node && ply < pv_moves_.size){
                 pv_move = pv_moves_.moves[ply];
             }
-            score_moves(board_, legal_moves, tt_move, pv_move, &(km_table_).at(ply));
+            score_moves(*board_, legal_moves, tt_move, pv_move, &(km_table_).at(ply));
             return legal_moves;
         }
 
         void _set_timedout(){
             std::chrono::duration<double>time_limit(timelimit_ms_ / 1000);
-            timedout_ = (std::chrono::steady_clock::now() - start_) >= time_limit;
+            timedout_ = (std::chrono::steady_clock::now() - start_time_) >= time_limit;
         }
 
     public:
         int n_nodes;
         int level_n_nodes;
         
-        IterativeDeepeningPVSearch(
-            chess::Board &board, 
-            map_t<uint64_t, TTEntry> *tt=nullptr
-        ):board_(board), current_search_depth_(1), n_nodes(0), level_n_nodes(0), timedout_(false), tt_(tt){
+        ID_PVSearch(map_t<uint64_t, TTEntry> *tt=nullptr)
+        :current_search_depth_(1), n_nodes(0), level_n_nodes(0), timedout_(false), tt_(tt){
 
             best_move_.setScore(-Constants::MAX_AB_VAL);
             km_table_ = {{chess::Move::NO_MOVE}};
         };
 
-        pair_t<chess::Move, int16_t> run(uint64_t timelimit_ms, bool log=true){
-            
-            start_        = std::chrono::steady_clock::now();
+        pair_t<chess::Move, int16_t> run(chess::Board &board, uint64_t timelimit_ms, bool log=true){
+            board_        = &board;
+            start_time_   = std::chrono::steady_clock::now();
             timelimit_ms_ = timelimit_ms;
-            int16_t color = board_.sideToMove() == chess::Color("w") ? 1 : -1;
+            int16_t color = board_->sideToMove() == chess::Color("w") ? 1 : -1;
             SearchResult search_result;
 
             while(!timedout_){
@@ -235,7 +233,33 @@ class IterativeDeepeningPVSearch{
             return {best_move_, best_score_};
         }
 
-        int max_depth_searched(){return current_search_depth_;}
+        int max_depth_searched(){
+            return current_search_depth_;
+        }
+
+        PVLine pv_moves(){
+            return pv_moves_;
+        }
+
+        SearchResult get_result(){
+            return SearchResult(best_move_, best_score_);
+        }
+
+        void reset(bool clear_tt=true){
+            timedout_             = false;
+            current_search_depth_ = 1;
+            timelimit_ms_         = 0;
+            pv_moves_.moves       = {{chess::Move::NO_MOVE}};
+            pv_moves_.size        = 0;
+            best_move_            = chess::Move::NO_MOVE;
+            best_score_           = -Constants::MAX_AB_VAL;
+            km_table_             = {{chess::Move::NO_MOVE}};
+            n_nodes               = 0;
+            level_n_nodes         = 0;
+
+            best_move_.setScore(-Constants::MAX_AB_VAL);
+            if(clear_tt){tt_->clear();}
+        }
 };
 
 pair_t<std::string, int16_t> id_pv_search_agent(
@@ -247,8 +271,8 @@ pair_t<std::string, int16_t> id_pv_search_agent(
     chess::Board board = chess::Board(fen_pos);
     
     pair_t<chess::Move, int16_t> search_result;
-    IterativeDeepeningPVSearch search = IterativeDeepeningPVSearch(board, tt);
-    search_result = search.run(timelimit_ms, log);
+    ID_PVSearch search = ID_PVSearch(tt);
+    search_result = search.run(board, timelimit_ms, log);
     return {chess::uci::moveToUci(search_result.first), search_result.second};
 }
 
