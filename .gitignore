@@ -6,6 +6,7 @@ unix_build
 windows_build
 *.exe
 *.out
+*.o
 test.cpp
 to_build.instruction.txt
 python/submission
