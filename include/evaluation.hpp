@@ -166,6 +166,12 @@ void score_moves(chess::Board &board, chess::Movelist &movelist){
 }
 
 void select_move(chess::Movelist &movelist, int start_idx){
+    // instead of sorting the movelist array, I instead opt for moving the most valuable move at a
+    // given time to the left-side of the array (at start_idx), although this by itself is less efficient
+    // than physically sorting the array, it is more efficient in a context where beta-cutoff occurs very
+    // frequently. So inotherwords the efficiency of this technique hinges on how good the move scoring
+    // and static evaluation methods are, because a good move scoring technique will trigger more beta
+    // cut-offs.
     chess::Move temp_move;
     for(int i = start_idx + 1; i < movelist.size(); i++){
         if(movelist.at(i).score() > movelist.at(start_idx).score()){
