@@ -197,7 +197,8 @@ class ID_PVSearch{
         :current_search_depth_(1), n_nodes(0), level_n_nodes(0), timedout_(false), tt_(tt){
 
             best_move_.setScore(-Constants::MAX_AB_VAL);
-            km_table_ = {{chess::Move::NO_MOVE}};
+            best_score_ = -Constants::MAX_AB_VAL;
+            km_table_   = {{chess::Move::NO_MOVE}};
         };
 
         pair_t<chess::Move, int16_t> run(chess::Board &board, uint64_t timelimit_ms, bool log=true){
