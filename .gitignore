@@ -5,6 +5,10 @@ build
 unix_build
 windows_build
 *.exe
-main.cpp
+*.out
+test.cpp
 to_build.instruction.txt
+python/submission
 **/__pycache__
+TODO.txt
+random_logs.txt

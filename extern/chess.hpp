@@ -25,7 +25,7 @@ THIS FILE IS AUTO GENERATED DO NOT CHANGE MANUALLY.
 
 Source: https://github.com/Disservin/chess-library
 
-VERSION: 0.6.77
+VERSION: 0.6.8
 */
 
 #ifndef CHESS_HPP
@@ -1265,10 +1265,10 @@ class Move {
      * @brief Set the score for a move. Useful if you later want to sort the moves.
      * @param score
      */
-    constexpr void setScore(std::float_t score) noexcept { score_ = score; }
+    constexpr void setScore(std::int16_t score) noexcept { score_ = score; }
 
     [[nodiscard]] constexpr std::uint16_t move() const noexcept { return move_; }
-    [[nodiscard]] constexpr std::float_t score() const noexcept { return score_; }
+    [[nodiscard]] constexpr std::int16_t score() const noexcept { return score_; }
 
     constexpr bool operator==(const Move &rhs) const noexcept { return move_ == rhs.move_; }
     constexpr bool operator!=(const Move &rhs) const noexcept { return move_ != rhs.move_; }
@@ -1282,7 +1282,7 @@ class Move {
 
    private:
     std::uint16_t move_;
-    std::float_t score_;
+    std::int16_t score_;
 };
 
 inline std::ostream &operator<<(std::ostream &os, const Move &move) {
@@ -4890,23 +4890,25 @@ class uci {
         if constexpr (LAN) {
             str += static_cast<std::string>(move.from().file());
             str += static_cast<std::string>(move.from().rank());
-        } else {
+        } else if (pt != PieceType::PAWN) {
             Movelist moves;
-            movegen::legalmoves(moves, board);
+            movegen::legalmoves(moves, board, 1 << pt);
+
+            bool needFile = false;
+            bool needRank = false;
 
             for (const auto &m : moves) {
-                // check for ambiguity
-                if (pt != PieceType::PAWN && m != move && board.at(m.from()) == board.at(move.from()) &&
-                    m.to() == move.to()) {
-                    if (m.from().file() == move.from().file()) {
-                        str += static_cast<std::string>(move.from().rank());
-                        break;
-                    } else {
-                        str += static_cast<std::string>(move.from().file());
-                        break;
-                    }
+                if (m != move && m.to() == move.to()) {
+                    // same file but different rank, we need rank
+                    if (m.from().file() == move.from().file()) needRank = true;
+
+                    // same rank but different file, we need file
+                    if (m.from().rank() == move.from().rank()) needFile = true;
                 }
             }
+
+            if (needFile) str += static_cast<std::string>(move.from().file());
+            if (needRank) str += static_cast<std::string>(move.from().rank());
         }
 
         if (board.at(move.to()) != Piece::NONE || move.typeOf() == Move::ENPASSANT) {

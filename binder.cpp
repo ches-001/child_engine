@@ -1,5 +1,5 @@
-// #include "include/mcts.hpp"
 // #include "include/minimax.hpp"
+// #include "include/id_pv_search.hpp"
 // #include <pybind11/pybind11.h>
 
 // namespace py = pybind11;
@@ -9,15 +9,27 @@
 //     handle.def(
 //         "minimax_agent", 
 //         &minimax_agent, 
-//         "Minimax implementation to compute the next best chess game move given the current position",
+//         "Minimax chess implementation",
 //         py::arg("fen_pos"),
 //         py::arg("depth"),
-//         py::arg("use_negamax")
+//         py::arg("tt")
 //     );
+
+//     handle.def(
+//         "id_pv_search_agent", 
+//         &id_pv_search_agent, 
+//         "PV search chess implementation with iterative deepening",
+//         py::arg("fen_pos"),
+//         py::arg("start_depth"),
+//         py::arg("depth_increment"),
+//         py::arg("timelimit_ms"),
+//         py::arg("tt")
+//     );
+
 //     handle.def(
 //         "mcts_agent", 
 //         &mcts_agent, 
-//         "MCTS implementation to compute the next best chess game move given the current position",
+//         "MCTS chess implementation",
 //         py::arg("fen_pos"),
 //         py::arg("c"),
 //         py::arg("rollout_depth"),
