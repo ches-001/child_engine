@@ -10,9 +10,7 @@
 class IterativeDeepeningPVSearch{
 
     private:
-        bool timeout_;
-
-        bool max_is_first_;
+        bool timedout_;
 
         int current_search_depth_;
 
@@ -49,7 +47,7 @@ class IterativeDeepeningPVSearch{
             bool is_pv_node=true){
 
             level_n_nodes += 1;
-            _set_timeout();
+            _set_timedout();
             
             int16_t alpha_orig = alpha;
             uint64_t hash = board_.hash();
@@ -90,7 +88,7 @@ class IterativeDeepeningPVSearch{
                 search_result.score = Constants::DRAW_SCORE;
                 return search_result;
             }
-            if(depth == 0 || timeout_){
+            if(depth == 0 || timedout_){
                 search_result.score = color * evaluate_board_state(board_);
                 return search_result;
             }
@@ -186,9 +184,9 @@ class IterativeDeepeningPVSearch{
             return legal_moves;
         }
 
-        void _set_timeout(){
+        void _set_timedout(){
             std::chrono::duration<double>time_limit(timelimit_ms_ / 1000);
-            timeout_ = (std::chrono::steady_clock::now() - start_) >= time_limit;
+            timedout_ = (std::chrono::steady_clock::now() - start_) >= time_limit;
         }
 
     public:
@@ -197,33 +195,26 @@ class IterativeDeepeningPVSearch{
         
         IterativeDeepeningPVSearch(
             chess::Board &board, 
-            bool max_is_first, 
-            int start_depth, 
             map_t<uint64_t, TTEntry> *tt=nullptr
-        ):board_(board), max_is_first_(max_is_first), current_search_depth_(start_depth), tt_(tt){
+        ):board_(board), current_search_depth_(1), n_nodes(0), level_n_nodes(0), timedout_(false), tt_(tt){
 
-            assert(start_depth > 0);
             best_move_.setScore(-Constants::MAX_AB_VAL);
-
-            n_nodes       = 0;
-            level_n_nodes = 0;
-            timeout_      = false;
-            km_table_     = {{chess::Move::NO_MOVE}};
+            km_table_ = {{chess::Move::NO_MOVE}};
         };
 
-        pair_t<chess::Move, int16_t> run(int depth_increment, uint64_t timelimit_ms, bool log=true){
+        pair_t<chess::Move, int16_t> run(uint64_t timelimit_ms, bool log=true){
             
             start_        = std::chrono::steady_clock::now();
             timelimit_ms_ = timelimit_ms;
-            int16_t color = max_is_first_ ? 1 : -1;
+            int16_t color = board_.sideToMove() == chess::Color("w") ? 1 : -1;
             SearchResult search_result;
 
-            while(!timeout_){
+            while(!timedout_){
                 PVLine pv_moves;
                 search_result = _search(color, current_search_depth_, -Constants::MAX_AB_VAL, Constants::MAX_AB_VAL, pv_moves);
                 // an exemption to this if-block would imply that the _search algorithm
                 // timed out prematurely.
-                if(pv_moves.size > pv_moves_.size){
+                if(!timedout_ && pv_moves.size > pv_moves_.size){
                     best_move_  = search_result.move;
                     best_score_ = search_result.score;
                     pv_moves_   = pv_moves;
@@ -239,7 +230,7 @@ class IterativeDeepeningPVSearch{
                 }
                 n_nodes += level_n_nodes;
                 level_n_nodes = 0;
-                current_search_depth_ += depth_increment;
+                current_search_depth_ += 1;
             }
             return {best_move_, best_score_};
         }
@@ -249,18 +240,15 @@ class IterativeDeepeningPVSearch{
 
 pair_t<std::string, int16_t> id_pv_search_agent(
     std::string fen_pos, 
-    int start_depth, 
-    int depth_increment,
     uint64_t timelimit_ms,
     map_t<uint64_t, TTEntry> *tt=nullptr, 
     bool log=true){
 
     chess::Board board = chess::Board(fen_pos);
-    bool is_white      = board.sideToMove() == chess::Color("w");
-
+    
     pair_t<chess::Move, int16_t> search_result;
-    IterativeDeepeningPVSearch search = IterativeDeepeningPVSearch(board, is_white, start_depth, tt);
-    search_result = search.run(depth_increment, timelimit_ms, log);
+    IterativeDeepeningPVSearch search = IterativeDeepeningPVSearch(board, tt);
+    search_result = search.run(timelimit_ms, log);
     return {chess::uci::moveToUci(search_result.first), search_result.second};
 }
 
