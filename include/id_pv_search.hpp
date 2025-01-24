@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include "types.hpp"
 #include "evaluation.hpp"
 #include "../extern/chess.hpp"
 

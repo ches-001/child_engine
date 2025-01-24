@@ -4,20 +4,6 @@
 #include <array>
 #include <vector>
 #include "../extern/chess.hpp"
-#include <unordered_map>
-
-template<typename T, std::size_t _size> 
-using arr_t = std::array<T, _size>;
-
-template<typename T>
-using vec_t = std::vector<T>;
-
-template<typename K, typename V>
-using map_t = std::unordered_map<K, V>;
-
-template<typename T1, typename T2>
-using pair_t = std::pair<T1, T2>;
-
 
 inline constexpr int32_t make_score(int16_t mg, int16_t eg){
     return static_cast<int32_t>(static_cast<int32_t>(eg) << 16) + mg;
@@ -395,9 +381,6 @@ namespace Constants{
     const int16_t PV_MOVE_SCORE = 300;
     const int16_t TT_MOVE_SCORE = 250;
     const int16_t CASTLING_SCORE = 50;
-
-    const int MAX_KILLER_MOVES_PLY = 128;
-    const int NUM_KILLER_MOVES     =   2;
     const int16_t KILLER_MOVE_SCORE = 10;
 
 
@@ -461,7 +444,5 @@ namespace Constants{
     const int32_t SCALE_NORMAL               = 128;
     const int32_t SCALE_LARGE_PAWN_ADVANCE   = 144;
 }
-
-using kmt_t = arr_t<arr_t<chess::Move, Constants::NUM_KILLER_MOVES>, Constants::MAX_KILLER_MOVES_PLY>;
 
 #endif

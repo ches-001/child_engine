@@ -2,6 +2,7 @@
 #define MINIMAX_HPP
 
 #include <algorithm>
+#include "types.hpp"
 #include "evaluation.hpp"
 #include "../extern/chess.hpp"
 
