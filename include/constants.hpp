@@ -378,6 +378,11 @@ namespace Constants{
     // Promotion scores (P, K, B, R, Q)
     const arr_t<int16_t, 5> PROMOTION_SCORES = {{5, 10, 15, 20, 25}};
     
+    // The indexes of TT_MOVE_SCORES correspond to Exact, Upperbound and Lowebound nodes
+    // Although, looking at the logic of the search algorithms, you would notice that the
+    // Exact nodes are not used for move sorting, because if an Exact node is encountered
+    // It automatically returns its result from the TT, without having to do any further
+    // search.
     const arr_t<int16_t, 3> TT_MOVE_SCORES   = {{150, -10, 250}};
     const int16_t PV_MOVE_SCORE     = 300;
     const int16_t CASTLING_SCORE    =  50;
