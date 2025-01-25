@@ -59,10 +59,11 @@ class ID_PVSearch{
             if(tt_){
                 if(tt_->find(hash) != tt_->end()){
                     TTEntry tt_entry = tt_->at(hash);
-                    tt_move.move = tt_entry.tt_move;
-                    tt_move.type = tt_entry.entry_type;
 
                     if(tt_entry.depth >= depth){
+                        tt_move.move = tt_entry.tt_move;
+                        tt_move.type = tt_entry.entry_type;
+
                         if(tt_entry.entry_type == TTEntry::TTEntryType::EXACT){
                             return SearchResult(tt_entry.tt_move, tt_entry.tt_score);
                         }

@@ -28,10 +28,11 @@ SearchResult negamax(
     if(tt){
         if(tt->find(hash) != tt->end()){
             TTEntry tt_entry = tt->at(hash);
-            tt_move.move = tt_entry.tt_move;
-            tt_move.type = tt_entry.entry_type;
             
             if(tt_entry.depth >= depth){
+                tt_move.move = tt_entry.tt_move;
+                tt_move.type = tt_entry.entry_type;
+
                 if(tt_entry.entry_type == TTEntry::TTEntryType::EXACT){
                     return SearchResult(tt_entry.tt_move, tt_entry.tt_score);
                 }
