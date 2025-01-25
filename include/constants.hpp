@@ -378,7 +378,7 @@ namespace Constants{
     // Promotion scores (P, K, B, R, Q)
     const arr_t<int16_t, 5> PROMOTION_SCORES = {{5, 10, 15, 20, 25}};
     
-    const arr_t<int16_t, 3> TT_MOVE_SCORES   = {{150, 0, 250}};
+    const arr_t<int16_t, 3> TT_MOVE_SCORES   = {{150, -10, 250}};
     const int16_t PV_MOVE_SCORE     = 300;
     const int16_t CASTLING_SCORE    =  50;
     const int16_t KILLER_MOVE_SCORE =  10;
