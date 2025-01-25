@@ -21,8 +21,11 @@ using map_t = std::unordered_map<K, V>;
 template<typename T1, typename T2>
 using pair_t = std::pair<T1, T2>;
 
-// Killer Move Table template
+// Killer Move Table template: (killermoves[ply][idx])
 using kmt_t = arr_t<arr_t<chess::Move, Constants::NUM_KILLER_MOVES>, Constants::MAX_KILLER_MOVES_PLY>;
+
+// History Table template: (history[piece][to])
+using history_t = arr_t<arr_t<int16_t, 64>, 12>;
 
 struct SearchResult{
     public:
@@ -49,7 +52,8 @@ struct TTEntry{
         enum struct TTEntryType{
             EXACT,      // Also known as PV Nodes (alpha < score < beta)
             UPPERBOUND, // Also known as All-nodes or fail-low nodes (score <= alpha)
-            LOWERBOUND  // Also known as Cut-nodes or fail-high nodes (score > beta)
+            LOWERBOUND, // Also known as Cut-nodes or fail-high nodes (score > beta)
+            NONE        // No Type (merely a placeholder)
         };
 
         int depth;
@@ -66,6 +70,14 @@ struct TTEntry{
         tt_move(tt_move), 
         tt_score(tt_score), 
         entry_type(entry_type){}
+};
+
+struct TTMove{
+    public:
+        chess::Move move;
+        TTEntry::TTEntryType type;
+
+    TTMove():move(chess::Move::NO_MOVE),type(TTEntry::TTEntryType::NONE){}
 };
 
 struct EvalInfo{

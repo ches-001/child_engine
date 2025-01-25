@@ -9,9 +9,10 @@
 void score_moves(
     chess::Board &board, 
     chess::Movelist &movelist,
-    chess::Move tt_move,
+    TTMove tt_move,
     chess::Move pv_move,
-    arr_t<chess::Move, Constants::NUM_KILLER_MOVES> *killer_moves
+    arr_t<chess::Move, Constants::NUM_KILLER_MOVES> *killer_moves,
+    history_t *history_table
 ){
     
     chess::Color color(board.sideToMove());
@@ -29,10 +30,13 @@ void score_moves(
         victim = board.at<chess::PieceType>(to);
 
         // Move priority:
-        // 1. PV moves
-        // 2. TT moves
-        // 2. Captures / Promotion / Castling
-        // 3. History heuristics for quite moves
+        // 1. PV moves from the PV line of the previous search
+        // 2. TT moves as fallback if no PV move (the TT also contains PV moves, 
+        //    but not all PV moves are propagated to the root node to get added 
+        //    to the PV line, but not only that)
+        // 3. Captures / Promotion / Castling
+        // 4. Killer moves for quite moves
+        // 5. History heuristics as fallback for if no killer moves (also for quite moves)
 
         // It is possible for a PV move to be equal to a TT move as the transposition table (TT)
         // stores all EXACT types (alpha < score < beta), however, I do like to differentiate
@@ -41,10 +45,12 @@ void score_moves(
         if(pv_move.move() != chess::Move::NO_MOVE && move == pv_move){
             score += Constants::PV_MOVE_SCORE;
         }
-        else if(tt_move.move() != chess::Move::NO_MOVE && move == tt_move){
-            score += Constants::TT_MOVE_SCORE;
+        else if(   tt_move.move.move() != chess::Move::NO_MOVE 
+                && tt_move.type != TTEntry::TTEntryType::NONE 
+                && move == tt_move.move){
+            score += Constants::TT_MOVE_SCORES[(int)tt_move.type];
         }
-        else{
+        if(score == 0){
             bool is_capture = board.isCapture(move);
             bool is_promotion = move.typeOf() == chess::Move::PROMOTION;
             bool is_castling = move.typeOf() == chess::Move::CASTLING;
@@ -62,11 +68,16 @@ void score_moves(
             }
             if(!is_capture && !is_promotion && !is_castling){
                 if(killer_moves){
+                    // The size of killer_moves array is merely 2 (can be changed in types.hpp),
+                    // so not much performance impedence
                     for(chess::Move &killer_move : *killer_moves){
                         if(killer_move == move){
                             score += Constants::KILLER_MOVE_SCORE;
                         }
                     }
+                }
+                if(score == 0){
+                    score += history_table ? (*history_table).at(board.at<chess::Piece>(from)).at(to.index()) : 0;
                 }
             }
         }
@@ -77,25 +88,25 @@ void score_moves(
 void score_moves(
     chess::Board &board, 
     chess::Movelist &movelist, 
-    chess::Move tt_move, 
+    TTMove tt_move, 
     chess::Move pv_move){
-    score_moves(board, movelist, tt_move, pv_move, nullptr);
+    score_moves(board, movelist, tt_move, pv_move, nullptr, nullptr);
 }
 
 void score_moves(
     chess::Board &board, 
     chess::Movelist &movelist,
-    chess::Move tt_move, 
+    TTMove tt_move, 
     arr_t<chess::Move, Constants::NUM_KILLER_MOVES> *killer_moves){
-    score_moves(board, movelist, tt_move, chess::Move::NO_MOVE, killer_moves);
+    score_moves(board, movelist, tt_move, chess::Move::NO_MOVE, killer_moves, nullptr);
 }
 
-void score_moves(chess::Board &board, chess::Movelist &movelist, chess::Move tt_move){
-    score_moves(board, movelist, tt_move, chess::Move::NO_MOVE, nullptr);
+void score_moves(chess::Board &board, chess::Movelist &movelist, TTMove tt_move){
+    score_moves(board, movelist, tt_move, chess::Move::NO_MOVE, nullptr, nullptr);
 }
 
 void score_moves(chess::Board &board, chess::Movelist &movelist){
-    score_moves(board, movelist, chess::Move::NO_MOVE, chess::Move::NO_MOVE, nullptr);
+    score_moves(board, movelist, TTMove(), chess::Move::NO_MOVE, nullptr, nullptr);
 }
 
 void select_move(chess::Movelist &movelist, int start_idx){
@@ -117,15 +128,19 @@ void select_move(chess::Movelist &movelist, int start_idx){
 
 void store_killer_move(kmt_t *km_table, chess::Move move, int ply){
     if(move == chess::Move::NO_MOVE){return;}
-    arr_t<chess::Move, Constants::NUM_KILLER_MOVES> &killers = (*km_table).at(ply);
+    arr_t<chess::Move, Constants::NUM_KILLER_MOVES> &killer_moves = (*km_table).at(ply);
 
-    for(chess::Move &killer_move : killers){
+    for(chess::Move &killer_move : killer_moves){
         if(move == killer_move){return;}
     }
-    for(int i=1; i < killers.size(); i++){
-        killers[i] = killers[i-1];
+    for(int i=1; i < killer_moves.size(); i++){
+        killer_moves[i] = killer_moves[i-1];
     }
-    killers[0] = move;
+    killer_moves[0] = move;
+}
+
+void update_history(history_t *history_table, chess::Piece piece, chess::Square to, int ply){
+    /** TODO: Implement history table updater */
 }
 
 chess::Bitboard get_pawn_advance(

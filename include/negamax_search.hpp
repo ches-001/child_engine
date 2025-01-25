@@ -16,18 +16,20 @@ SearchResult negamax(
     int16_t alpha, 
     int16_t beta,
     map_t<uint64_t, TTEntry> *tt=nullptr,
-    kmt_t *km_table=nullptr){
+    kmt_t *km_table=nullptr,
+    history_t *history_table=nullptr){
     
     _NODE_COUNT += 1;
 
     int16_t alpha_orig = alpha;
     uint64_t hash = board.hash();
-    chess::Move tt_move(chess::Move::NO_MOVE);
+    TTMove tt_move;
 
     if(tt){
         if(tt->find(hash) != tt->end()){
             TTEntry tt_entry = tt->at(hash);
-            tt_move = tt_entry.tt_move;
+            tt_move.move = tt_entry.tt_move;
+            tt_move.type = tt_entry.entry_type;
             
             if(tt_entry.depth >= depth){
                 if(tt_entry.entry_type == TTEntry::TTEntryType::EXACT){
@@ -60,11 +62,13 @@ SearchResult negamax(
         return SearchResult(best_move, color * evaluate_board_state(board));
     }
 
+    int ply = _SEARCH_DEPTH - depth;
     if(km_table){
-        score_moves(board, legal_moves, tt_move, &(*km_table).at(_SEARCH_DEPTH - depth));
+        arr_t<chess::Move, Constants::NUM_KILLER_MOVES> &killer_moves = (*km_table).at(ply);
+        score_moves(board, legal_moves, tt_move, chess::Move::NO_MOVE, &killer_moves, history_table);
     }
     else{
-        score_moves(board, legal_moves, tt_move);
+        score_moves(board, legal_moves, tt_move, chess::Move::NO_MOVE, nullptr, history_table);
     }
     SearchResult search_result;
     chess::Move child_move(chess::Move::NO_MOVE);
@@ -75,7 +79,7 @@ SearchResult negamax(
         child_move = legal_moves[i];
         board.makeMove(child_move);
         
-        search_result = negamax(board, -color, depth-1, -beta, -alpha, tt, km_table);
+        search_result = negamax(board, -color, depth-1, -beta, -alpha, tt, km_table, history_table);
         search_result.score = -search_result.score;
 
         board.unmakeMove(child_move);
@@ -89,8 +93,9 @@ SearchResult negamax(
         if(search_result.score >= beta){
             best_score = search_result.score;
             best_move = child_move;
-            // Store killer moves, this will be used for sorting silent moves (moves that are not captures
-            // or promotions). The killer move heuristics suggests that a move that caused a beta-cutoff at a
+            // Store killer moves and update history, this will be used for sorting silent moves 
+            // (moves that are not captures or promotions).
+            // The killer move heuristics suggests that a move that caused a beta-cutoff at a
             // given ply will probably be a good move at that ply, as such we can order it to be one of the 
             // first few moves to be explored by the algorithm.
             if(
@@ -98,7 +103,8 @@ SearchResult negamax(
                 && !board.isCapture(best_move) 
                 && best_move.typeOf() != chess::Move::PROMOTION
                 && best_move.typeOf() != chess::Move::CASTLING){
-                store_killer_move(km_table, best_move, _SEARCH_DEPTH - depth);
+                store_killer_move(km_table, best_move, ply);
+                update_history(history_table, board.at<chess::Piece>(best_move.from()), best_move.to(), ply);
             }
             break;
         }
@@ -136,18 +142,19 @@ pair_t<std::string, int16_t> minimax_agent(
     map_t<uint64_t, TTEntry> *tt=nullptr,
     bool log=true){
         
-    _NODE_COUNT        = 0;
-    _SEARCH_DEPTH      = depth;
-    chess::Board board = chess::Board(fen_pos);
-    int color          = board.sideToMove() == chess::Color("w") ? 1 : -1;
-    kmt_t km_table     = {{chess::Move::NO_MOVE}};
+    _NODE_COUNT             = 0;
+    _SEARCH_DEPTH           = depth;
+    chess::Board board      = chess::Board(fen_pos);
+    int color               = board.sideToMove() == chess::Color("w") ? 1 : -1;
+    kmt_t km_table          = {{ }};
+    history_t history_table = {{ }};
     
     std::string best_move;
     int16_t score;
     SearchResult search_result;
 
     search_result = negamax(
-        board, color, depth, -Constants::MAX_AB_VAL, Constants::MAX_AB_VAL, tt, &km_table
+        board, color, depth, -Constants::MAX_AB_VAL, Constants::MAX_AB_VAL, tt, &km_table, &history_table
     );
     best_move = chess::uci::moveToUci(search_result.move);
     score = search_result.score;

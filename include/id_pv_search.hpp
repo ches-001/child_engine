@@ -31,6 +31,8 @@ class ID_PVSearch{
         
         kmt_t km_table_;
 
+        history_t history_table_;
+
         /** 
          * The technique for implementing PV search with a transposition table can be found in the reference below;
          * REFERENCE: https://en.wikipedia.org/wiki/Negamax#Negamax_with_alpha_beta_pruning_and_transposition_tables 
@@ -52,12 +54,13 @@ class ID_PVSearch{
             
             int16_t alpha_orig = alpha;
             uint64_t hash = board_->hash();
-            chess::Move tt_move = chess::Move::NO_MOVE;
+            TTMove tt_move;
 
             if(tt_){
                 if(tt_->find(hash) != tt_->end()){
                     TTEntry tt_entry = tt_->at(hash);
-                    tt_move = tt_entry.tt_move;
+                    tt_move.move = tt_entry.tt_move;
+                    tt_move.type = tt_entry.entry_type;
 
                     if(tt_entry.depth >= depth){
                         if(tt_entry.entry_type == TTEntry::TTEntryType::EXACT){
@@ -79,7 +82,7 @@ class ID_PVSearch{
             SearchResult search_result;
             chess::Move best_move(chess::Move::NO_MOVE);
             search_result.move = best_move;
-            chess::Movelist legal_moves = _legal_moves(depth, is_pv_node);
+            chess::Movelist legal_moves = _legal_moves(depth, is_pv_node, tt_move);
 
             if(legal_moves.empty() || board_->isHalfMoveDraw()){
                 if(board_->inCheck()){
@@ -117,15 +120,18 @@ class ID_PVSearch{
                 if(search_result.score >= beta){
                     best_score = search_result.score;
                     best_move = child_move;
-                    // Store killer moves, this will be used for sorting silent moves (moves that are not captures
-                    // or promotions). The killer move heuristics suggests that a move that caused a beta-cutoff at a
+                    // Store killer moves and update history, this will be used for sorting silent moves 
+                    // (moves that are not captures or promotions).
+                    // The killer move heuristics suggests that a move that caused a beta-cutoff at a
                     // given ply will probably be a good move at that ply, as such we can order it to be one of the 
                     // first few moves to be explored by the algorithm.
                     if(
                         !board_->isCapture(best_move) 
                         && best_move.typeOf() != chess::Move::PROMOTION
                         && best_move.typeOf() != chess::Move::CASTLING){
-                        store_killer_move(&km_table_, best_move, current_search_depth_-depth);
+                        int ply = current_search_depth_ - depth;
+                        store_killer_move(&km_table_, best_move, ply);
+                        update_history(&history_table_, board_->at<chess::Piece>(best_move.from()), best_move.to(), ply);
                     }
                     break;
                 }
@@ -136,16 +142,19 @@ class ID_PVSearch{
                 // as it is or the exact score which could be less than or equal to alpha, it will make no
                 // difference hence we return the best score found in this search rather than alpha
                 if(search_result.score > best_score){
-                    alpha = max(alpha, search_result.score);
                     best_score = search_result.score;
                     best_move = child_move;
-                    pv_moves.moves[0] = child_move;
-                    std::copy(
-                        child_pv_moves.moves.begin(), 
-                        child_pv_moves.moves.begin() + child_pv_moves.size, 
-                        pv_moves.moves.begin() + 1
-                    );
-                    pv_moves.size = child_pv_moves.size + 1;
+
+                    if(search_result.score > alpha){
+                        alpha = search_result.score;
+                        pv_moves.moves[0] = child_move;
+                        std::copy(
+                            child_pv_moves.moves.begin(), 
+                            child_pv_moves.moves.begin() + child_pv_moves.size, 
+                            pv_moves.moves.begin() + 1
+                        );
+                        pv_moves.size = child_pv_moves.size + 1;
+                    }
                 }
             }
             if(tt_){
@@ -164,7 +173,7 @@ class ID_PVSearch{
             return SearchResult(best_move, best_score);
         }
 
-        chess::Movelist _legal_moves(int depth, bool is_pv_node, chess::Move tt_move=chess::Move::NO_MOVE){
+        chess::Movelist _legal_moves(int depth, bool is_pv_node, TTMove tt_move){
             // Here we compute the legal moves, check if this node is along a pv_path (left most part of the game tree)
             // and also check if pv_idx is within range of the current pv_moves_ move-list, then we score moves based on
             // various conditions, like whether the move is a PV move or a move from the transposition table, or whether
@@ -181,7 +190,7 @@ class ID_PVSearch{
             if(is_pv_node && ply < pv_moves_.size){
                 pv_move = pv_moves_.moves[ply];
             }
-            score_moves(*board_, legal_moves, tt_move, pv_move, &(km_table_).at(ply));
+            score_moves(*board_, legal_moves, tt_move, pv_move, &(km_table_).at(ply), &history_table_);
             return legal_moves;
         }
 
@@ -203,7 +212,8 @@ class ID_PVSearch{
         tt_(tt){
             
             best_move_.setScore(-Constants::MAX_AB_VAL);
-            km_table_ = {{chess::Move::NO_MOVE}};
+            km_table_      = {{ }};
+            history_table_ = {{ }};
         };
 
         pair_t<chess::Move, int16_t> run(chess::Board &board, uint64_t timelimit_ms, bool log=true){
@@ -218,10 +228,22 @@ class ID_PVSearch{
                 search_result = _search(color, current_search_depth_, -Constants::MAX_AB_VAL, Constants::MAX_AB_VAL, pv_moves);
                 // an exemption to this if-block would imply that the _search algorithm
                 // timed out prematurely.
-                if(!timedout_ && pv_moves.size > pv_moves_.size){
+                if(!timedout_){
+                    // it is possible for the current PV moves to be less than the previous PV moves
+                    // due to encountering an EXACT position in the transposition table. For those cases
+                    // array is completed with the remaining PV moves from before.
+                    if(pv_moves.size < pv_moves_.size){
+                        std::copy(
+                            pv_moves.moves.begin(),
+                            pv_moves.moves.begin() + pv_moves.size,
+                            pv_moves_.moves.begin()
+                        );
+                    }
+                    else{
+                        pv_moves_ = pv_moves;
+                    }
                     best_move_  = search_result.move;
                     best_score_ = search_result.score;
-                    pv_moves_   = pv_moves;
                 }
                 if(log){
                     std::cout << "INFO-: score " << best_score_
@@ -255,11 +277,12 @@ class ID_PVSearch{
             timedout_             = false;
             current_search_depth_ = 1;
             timelimit_ms_         = 0;
-            pv_moves_.moves       = {{chess::Move::NO_MOVE}};
+            pv_moves_.moves       = {{ }};
             pv_moves_.size        = 0;
             best_move_            = chess::Move::NO_MOVE;
             best_score_           = -Constants::MAX_AB_VAL;
-            km_table_             = {{chess::Move::NO_MOVE}};
+            km_table_             = {{ }};
+            history_table_        = {{ }};
             n_nodes               = 0;
             level_n_nodes         = 0;
 
