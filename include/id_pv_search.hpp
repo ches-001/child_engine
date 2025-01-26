@@ -27,7 +27,7 @@ class ID_PVSearch{
         
         chess::Board *board_;
 
-        map_t<uint64_t, TTEntry> *tt_;
+        TranspositionTable *tt_;
         
         kmt_t km_table_;
 
@@ -57,8 +57,8 @@ class ID_PVSearch{
             TTMove tt_move;
 
             if(tt_){
-                if(tt_->find(hash) != tt_->end()){
-                    TTEntry tt_entry = tt_->at(hash);
+                if(tt_->is_exist(hash)){
+                    TTEntry tt_entry = tt_->unchecked_get(hash);
 
                     if(tt_entry.depth >= depth){
                         tt_move.move = tt_entry.tt_move;
@@ -121,19 +121,6 @@ class ID_PVSearch{
                 if(search_result.score >= beta){
                     best_score = search_result.score;
                     best_move = child_move;
-                    // Store killer moves and update history, this will be used for sorting silent moves 
-                    // (moves that are not captures or promotions).
-                    // The killer move heuristics suggests that a move that caused a beta-cutoff at a
-                    // given ply will probably be a good move at that ply, as such we can order it to be one of the 
-                    // first few moves to be explored by the algorithm.
-                    if(
-                        !board_->isCapture(best_move) 
-                        && best_move.typeOf() != chess::Move::PROMOTION
-                        && best_move.typeOf() != chess::Move::CASTLING){
-                        int ply = current_search_depth_ - depth;
-                        store_killer_move(&km_table_, best_move, ply);
-                        update_history(&history_table_, board_->at<chess::Piece>(best_move.from()), best_move.to(), ply);
-                    }
                     break;
                 }
                 // do note that the score assigned to a move with the `scoreMove` method is different from 
@@ -160,16 +147,32 @@ class ID_PVSearch{
             }
             if(tt_){
                 TTEntry::TTEntryType entry_type;
-                if (search_result.score <= alpha_orig){
+                if (best_score <= alpha_orig){
                     entry_type = TTEntry::TTEntryType::UPPERBOUND;
                 }
-                else if (search_result.score >= beta){
+                else if (best_score >= beta){
                     entry_type = TTEntry::TTEntryType::LOWERBOUND;
                 }
                 else{
                     entry_type = TTEntry::TTEntryType::EXACT;
                 }
-                tt_->insert({hash, TTEntry(depth, child_move, search_result.score, entry_type)});
+                tt_->insert({hash, TTEntry(depth, best_move, best_score, entry_type)});
+            }
+
+            // Store killer moves and update history, this will be used for sorting silent moves 
+            // (moves that are not captures or promotions). The killer move heuristics suggests
+            // that a move that caused a beta-cutoff at a given ply will probably be a good move
+            // at that ply, as such we can order it to be one of the first few moves to be explored
+            // by the algorithm.
+            if(is_quiet_move(*board_, best_move)){
+                int ply = current_search_depth_ - depth;
+                int16_t history_bonus = 100 * depth;
+
+                if(best_score >= beta){
+                    history_bonus *= 3;
+                    store_killer_move(&km_table_, best_move, ply);
+                }
+                update_history(&history_table_, board_->at<chess::Piece>(best_move.from()), best_move.to(), history_bonus);
             }
             return SearchResult(best_move, best_score);
         }
@@ -204,7 +207,7 @@ class ID_PVSearch{
         int n_nodes;
         int level_n_nodes;
         
-        ID_PVSearch(map_t<uint64_t, TTEntry> *tt=nullptr)
+        ID_PVSearch(TranspositionTable *tt=nullptr)
         :n_nodes(0), 
         level_n_nodes(0),
         current_search_depth_(1),  
@@ -224,7 +227,7 @@ class ID_PVSearch{
             int16_t color = board_->sideToMove() == chess::Color("w") ? 1 : -1;
             SearchResult search_result;
 
-            while(!timedout_){
+            while(!timedout_  && current_search_depth_ <= Constants::MAX_SEARCH_DEPTH){
                 PVLine pv_moves;
                 search_result = _search(color, current_search_depth_, -Constants::MAX_AB_VAL, Constants::MAX_AB_VAL, pv_moves);
                 // an exemption to this if-block would imply that the _search algorithm
@@ -247,9 +250,9 @@ class ID_PVSearch{
                     best_score_ = search_result.score;
                 }
                 if(log){
-                    std::cout << "INFO-: score " << best_score_
-                              << " |depth " << current_search_depth_ << " |nodes " 
-                              << level_n_nodes << " |pv moves ";
+                    std::cout << "INFO-: score: " << best_score_
+                              << " |depth: " << current_search_depth_ << " |nodes: " 
+                              << level_n_nodes << " |pv moves: ";
                     for(int i = 0; i < pv_moves_.size; i++){
                         std::cout << chess::uci::moveToUci(pv_moves_.moves[i]) << ", ";
                     }
@@ -295,7 +298,7 @@ class ID_PVSearch{
 pair_t<std::string, int16_t> id_pv_search_agent(
     std::string fen_pos, 
     uint64_t timelimit_ms,
-    map_t<uint64_t, TTEntry> *tt=nullptr, 
+    TranspositionTable *tt=nullptr, 
     bool log=true){
 
     chess::Board board = chess::Board(fen_pos);

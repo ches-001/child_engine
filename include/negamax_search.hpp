@@ -15,7 +15,7 @@ SearchResult negamax(
     int depth,
     int16_t alpha, 
     int16_t beta,
-    map_t<uint64_t, TTEntry> *tt=nullptr,
+    TranspositionTable *tt=nullptr,
     kmt_t *km_table=nullptr,
     history_t *history_table=nullptr){
     
@@ -26,8 +26,8 @@ SearchResult negamax(
     TTMove tt_move;
 
     if(tt){
-        if(tt->find(hash) != tt->end()){
-            TTEntry tt_entry = tt->at(hash);
+        if(tt->is_exist(hash)){
+            TTEntry tt_entry = tt->unchecked_get(hash);
             
             if(tt_entry.depth >= depth){
                 tt_move.move = tt_entry.tt_move;
@@ -94,19 +94,6 @@ SearchResult negamax(
         if(search_result.score >= beta){
             best_score = search_result.score;
             best_move = child_move;
-            // Store killer moves and update history, this will be used for sorting silent moves 
-            // (moves that are not captures or promotions).
-            // The killer move heuristics suggests that a move that caused a beta-cutoff at a
-            // given ply will probably be a good move at that ply, as such we can order it to be one of the 
-            // first few moves to be explored by the algorithm.
-            if(
-                km_table 
-                && !board.isCapture(best_move) 
-                && best_move.typeOf() != chess::Move::PROMOTION
-                && best_move.typeOf() != chess::Move::CASTLING){
-                store_killer_move(km_table, best_move, ply);
-                update_history(history_table, board.at<chess::Piece>(best_move.from()), best_move.to(), ply);
-            }
             break;
         }
         // do note that the score assigned to a move with the `scoreMove` method is different from 
@@ -123,26 +110,42 @@ SearchResult negamax(
     }
     if(tt){
         TTEntry::TTEntryType entry_type;
-        if (search_result.score <= alpha_orig){
+        if (best_score <= alpha_orig){
             entry_type = TTEntry::TTEntryType::UPPERBOUND;
         }
-        else if (search_result.score >= beta){
+        else if (best_score >= beta){
             entry_type = TTEntry::TTEntryType::LOWERBOUND;
         }
         else{
             entry_type = TTEntry::TTEntryType::EXACT;
         }
-        tt->insert({hash, TTEntry(depth, child_move, search_result.score, entry_type)});
+        tt->insert({hash, TTEntry(depth, best_move, best_score, entry_type)});
+    }
+    // Store killer moves and update history, this will be used for sorting silent moves 
+    // (moves that are not captures or promotions). The killer move heuristics suggests
+    // that a move that caused a beta-cutoff at a given ply will probably be a good move
+    // at that ply, as such we can order it to be one of the first few moves to be explored
+    // by the algorithm.
+    if(is_quiet_move(board, best_move)){
+        int16_t history_bonus = 100 * depth;
+        
+        if(best_score >= beta){
+            history_bonus *= 3;
+            store_killer_move(km_table, best_move, ply);
+        }
+        update_history(history_table, board.at<chess::Piece>(best_move.from()), best_move.to(), history_bonus);
     }
     return SearchResult(best_move, best_score);
 }
 
-pair_t<std::string, int16_t> minimax_agent(
+pair_t<std::string, int16_t> negamax_agent(
     std::string fen_pos, 
     int depth, 
-    map_t<uint64_t, TTEntry> *tt=nullptr,
+    TranspositionTable *tt=nullptr,
     bool log=true){
         
+    assert(depth <= Constants::MAX_SEARCH_DEPTH);
+    
     _NODE_COUNT             = 0;
     _SEARCH_DEPTH           = depth;
     chess::Board board      = chess::Board(fen_pos);

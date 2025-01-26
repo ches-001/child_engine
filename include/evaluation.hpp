@@ -6,7 +6,7 @@
 #include "../extern/chess.hpp"
 
 
-void score_moves(
+int16_t score_moves(
     chess::Board &board, 
     chess::Movelist &movelist,
     TTMove tt_move,
@@ -15,6 +15,8 @@ void score_moves(
     history_t *history_table
 ){
     
+    const static int16_t MOVE_SCORE_OFFSET = 30000;
+
     chess::Color color(board.sideToMove());
     int16_t score;
     chess::Square from;
@@ -22,8 +24,10 @@ void score_moves(
     chess::PieceType attacker;
     chess::PieceType victim;
 
+    int16_t avg_score;
+
     for(chess::Move &move : movelist){
-        score = 0;
+        score = MOVE_SCORE_OFFSET;
         from = move.from();
         to = move.to();
         attacker = board.at<chess::PieceType>(from);
@@ -35,8 +39,8 @@ void score_moves(
         //    but not all PV moves are propagated to the root node to get added 
         //    to the PV line, but not only that)
         // 3. Captures / Promotion / Castling
-        // 4. Killer moves for quite moves
-        // 5. History heuristics as fallback for if no killer moves (also for quite moves)
+        // 4. Killer moves for quiet moves
+        // 5. History heuristics as fallback for if no killer moves (also for quiet moves)
 
         // It is possible for a PV move to be equal to a TT move as the transposition table (TT)
         // stores all EXACT types (alpha < score < beta), however, I do like to differentiate
@@ -50,12 +54,12 @@ void score_moves(
                 && move == tt_move.move){
             score += Constants::TT_MOVE_SCORES[(int)tt_move.type];
         }
-        if(score == 0){
+        if(score == MOVE_SCORE_OFFSET){
             bool is_capture = board.isCapture(move);
             bool is_promotion = move.typeOf() == chess::Move::PROMOTION;
             bool is_castling = move.typeOf() == chess::Move::CASTLING;
-            bool is_enpassent = move.typeOf() == chess::Move::ENPASSANT;
             if(is_capture){
+                bool is_enpassent = move.typeOf() == chess::Move::ENPASSANT;
                 score += is_enpassent
                     ? Constants::MVV_LVA_SCORES.at((int)chess::PieceType::PAWN).at(attacker)
                     : Constants::MVV_LVA_SCORES.at(victim).at(attacker);
@@ -73,16 +77,22 @@ void score_moves(
                     for(chess::Move &killer_move : *killer_moves){
                         if(killer_move == move){
                             score += Constants::KILLER_MOVE_SCORE;
+                            break;
                         }
                     }
                 }
-                if(score == 0){
-                    score += history_table ? (*history_table).at(board.at<chess::Piece>(from)).at(to.index()) : 0;
+                if(history_table && score == MOVE_SCORE_OFFSET){
+                    score -= MOVE_SCORE_OFFSET;
+                    score += (*history_table).at(board.at<chess::Piece>(from)).at(to.index());
                 }
             }
         }
+        score = score == MOVE_SCORE_OFFSET ? 0 : score;
+        avg_score += score;
         move.setScore(score);
     }
+    avg_score /= movelist.size();
+    return avg_score;
 }
 
 void score_moves(
@@ -139,8 +149,11 @@ void store_killer_move(kmt_t *km_table, chess::Move move, int ply){
     killer_moves[0] = move;
 }
 
-void update_history(history_t *history_table, chess::Piece piece, chess::Square to, int ply){
-    /** TODO: Implement history table updater */
+void update_history(history_t *history_table, chess::Piece piece, chess::Square to, int bonus){
+    const static int16_t MAX_HISTORY_SCORE = 3000;
+    bonus = clamp(bonus, -MAX_HISTORY_SCORE, MAX_HISTORY_SCORE);
+    (*history_table).at(piece).at(to.index()) += 
+        bonus - ((*history_table).at(piece).at(to.index()) * abs(bonus) / MAX_HISTORY_SCORE);
 }
 
 chess::Bitboard get_pawn_advance(

@@ -1,11 +1,9 @@
-#include "include/minimax.hpp"
+#include "include/negamax_search.hpp"
 // #include "include/id_pv_search.hpp"
 
 std::string const INPUT_PREFIX = "play: ";
 std::string const OUTPUT_PREFIX = "best move: ";
 std::string const EXIT_COMMAND = "exit";
-
-map_t<uint64_t, TTEntry> *TTABLE;
 
 int main(int argc, char *argv[]){
     bool use_ttable = (argc >= 2) ? std::stoi(argv[1]) : true;
@@ -13,10 +11,10 @@ int main(int argc, char *argv[]){
     std::string fen_str;
     int depth;
     std::string::size_type dsz;
-    pair_t<int16_t, std::string> best_move;
+    pair_t<std::string, int16_t> best_move;
 
     int pfsz = INPUT_PREFIX.length();
-    TTABLE = use_ttable ? new map_t<uint64_t, TTEntry>() : nullptr;
+    map_t<uint64_t, TTEntry> *TTABLE = use_ttable ? new map_t<uint64_t, TTEntry>() : nullptr;
     
     std::cout<< "Input format: " << INPUT_PREFIX << "<DEPTH> <FEN_STRING>" << std::endl;
     
@@ -30,7 +28,7 @@ int main(int argc, char *argv[]){
             command = command.substr(INPUT_PREFIX.length());
             depth = std::stoi(command, &dsz);
             fen_str = command.substr(dsz + 1);
-            best_move = minimax_agent(fen_str, depth, TTABLE);
+            best_move = negamax_agent(fen_str, depth, TTABLE, false);
             std::cout << OUTPUT_PREFIX << best_move.first << " " << best_move.second << std::endl;
         }
         else if(command == EXIT_COMMAND){

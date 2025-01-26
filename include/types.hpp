@@ -1,12 +1,17 @@
 #ifndef TYPES_HPP
 #define TYPES_HPP
 
+#include <array>
+#include <vector>
 #include <unordered_map>
 #include "../extern/chess.hpp"
 
 namespace Constants{
     const int MAX_KILLER_MOVES_PLY = 64;
+
     const int NUM_KILLER_MOVES     =  2;
+
+    const std::size_t DEFAULT_MAX_TT_SIZE  = 100000;
 }
 
 template<typename T, std::size_t _size> 
@@ -41,28 +46,28 @@ struct SearchResult{
 
 struct PVLine{
     public:
-        arr_t<chess::Move, 64> moves = {{chess::Move::NO_MOVE}};
-        int size;
+        arr_t<chess::Move, 64> moves;
+        std::size_t size;
         
-        PVLine():size(0){}
+        PVLine():size(0), moves({{ }}){}
 };
 
 struct TTEntry{
     public:
-        enum struct TTEntryType{
+        enum struct TTEntryType : uint8_t{
             EXACT,      // Also known as PV Nodes (alpha < score < beta)
             UPPERBOUND, // Also known as All-nodes or fail-low nodes (score <= alpha)
             LOWERBOUND, // Also known as Cut-nodes or fail-high nodes (score > beta)
             NONE        // No Type (merely a placeholder)
         };
 
-        int depth;
+        uint8_t depth;
         chess::Move tt_move;
         int16_t tt_score;
         TTEntry::TTEntryType entry_type;
 
         TTEntry(
-            int depth, 
+            uint8_t depth, 
             chess::Move tt_move,
             int16_t tt_score,
             TTEntry::TTEntryType entry_type
@@ -103,6 +108,74 @@ struct EvalInfo{
         arr_t<chess::Square, 2> king_sqs;
         
         chess::Bitboard passed_pawns;
+};
+
+struct TranspositionTable{
+    private:
+        map_t<uint64_t, TTEntry> tt_;
+        vec_t<uint64_t> order_;
+        std::size_t current_size_;
+        int index_to_pop_;
+        std::size_t max_tt_size_;
+
+    public:
+        TranspositionTable(std::size_t max_tt_size=Constants::DEFAULT_MAX_TT_SIZE)
+            :current_size_(0), index_to_pop_(0), max_tt_size_(max_tt_size){
+
+            assert(max_tt_size > 0);
+            max_tt_size_ = max_tt_size_;
+            order_.resize(max_tt_size_);
+        }
+
+        void insert(pair_t<uint64_t, TTEntry> item){
+            if(!tt_.insert(item).second){
+                return;
+            }
+
+            if(current_size_ == max_tt_size_){
+                int idx = index_to_pop_ % max_tt_size_;
+                tt_.erase(order_[idx]);
+                order_[idx] = item.first;
+                index_to_pop_ += 1;
+            }
+
+            else if(current_size_ > max_tt_size_){
+                // This should not happen
+                throw std::length_error("Size of transposition table exceeds the allowed limit!");
+            }
+            
+            else{
+                order_[current_size_] = item.first;
+                current_size_ += 1;
+            }
+        }
+
+        bool is_exist(uint64_t key){
+            return tt_.find(key) != tt_.end();
+        }
+
+        TTEntry unchecked_get(uint64_t key){
+            return tt_.at(key);
+        }
+
+        TTEntry get(uint64_t key){
+            map_t<uint64_t, TTEntry>::iterator it = tt_.find(key);
+            if(it != tt_.end()){
+                return it->second;
+            }
+           throw std::out_of_range("Key not found in the transposition table.");
+        }
+
+        std::size_t size(){
+            return current_size_;
+        }
+
+        void clear(){
+            tt_.clear();
+            current_size_ = 0;
+            index_to_pop_ = 0;
+            order_.clear();
+        }
 };
 
 #endif

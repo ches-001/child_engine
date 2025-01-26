@@ -1,8 +1,7 @@
 #ifndef CONSTANTS_HPP
 #define CONSTANTS_HPP
 
-#include <array>
-#include <vector>
+#include "types.hpp"
 #include "../extern/chess.hpp"
 
 inline constexpr int32_t make_score(int16_t mg, int16_t eg){
@@ -25,8 +24,22 @@ inline constexpr int32_t min(int32_t a, int32_t b){
     return a < b ? a : b;
 }
 
+inline constexpr int clamp(int val, int min_val, int max_val){
+    return val < min_val ? min_val : (val > max_val) ? max_val : val;
+}
+
+inline bool is_quiet_move(chess::Board &board, chess::Move move){
+    return !board.isCapture(move) 
+         && move.typeOf() != chess::Move::PROMOTION 
+         && move.typeOf() != chess::Move::CASTLING;
+}
+
 
 namespace Constants{
+    // If you decide to increase this, ensure to change the TTEntry::TTEntryType enum struct to 
+    // accomodate for integer size.
+    const int MAX_SEARCH_DEPTH = 255;
+
     const arr_t<int32_t, 6> PIECETYPE_WEIGHT = {{
         make_score(  82, 144), make_score( 426, 475), make_score( 441, 510), 
         make_score( 627, 803), make_score(1292,1623), make_score(   0,   0)
@@ -376,7 +389,7 @@ namespace Constants{
         { 0,  0,  0,  0,  0,  0},
     }};
     // Promotion scores (P, K, B, R, Q)
-    const arr_t<int16_t, 5> PROMOTION_SCORES = {{5, 10, 15, 20, 25}};
+    const arr_t<int16_t, 5> PROMOTION_SCORES = {{-10, 10, 20, 30, 40}};
     
     // The indexes of TT_MOVE_SCORES correspond to Exact, Upperbound and Lowebound nodes
     // Although, looking at the logic of the search algorithms, you would notice that the

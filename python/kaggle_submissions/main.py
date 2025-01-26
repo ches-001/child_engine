@@ -7,6 +7,8 @@ INPUT_PREFIX = "play: "
 OUTPUT_PREFIX = "best move: "
 EXIT_COMMAND = "exit"
 
+# tar -czf submission.tar.gz -C kaggle_submissions .
+
 class ChessEngine:
     def __init__(self, engine_path: str, depth: int=4, use_tt: bool=True):
         if os.name == "nt":
@@ -31,7 +33,7 @@ class ChessEngine:
             text=True
         )
 
-    def get_best_move(self, fen_str: str, depth: Optional[int]=None) -> Tuple[int, str]:
+    def get_best_move(self, fen_str: str, depth: Optional[int]=None) -> Tuple[str, int]:
         self.process.stdin.write(INPUT_PREFIX + str((depth or self.depth)) + " " + fen_str + "\n")
         self.process.stdin.flush()
         output = None
@@ -40,9 +42,9 @@ class ChessEngine:
             if output and output.startswith(OUTPUT_PREFIX):
                 break
         self.process.stdout.flush()
-        score, move = output.replace(OUTPUT_PREFIX, "").strip().split()
+        move, score = output.replace(OUTPUT_PREFIX, "").strip().split()
         score = int(score)
-        return score, move
+        return move, score
     
     def exit_process(self):
         self.process.stdin.write(EXIT_COMMAND + "\n")
@@ -54,8 +56,8 @@ ENGINE = None
 def agent(obs) -> str:
     global ENGINE
     if ENGINE is None:
-        ENGINE = ChessEngine("/kaggle_simulations/agent/chess_engine", depth=3, use_tt=True)
+        ENGINE = ChessEngine("/kaggle_simulations/agent/chess_engine", depth=4, use_tt=True)
     game = Game(obs.board)
     fen_str = game.get_fen()
-    _, move = ENGINE.get_best_move(fen_str)
+    move, _ = ENGINE.get_best_move(fen_str)
     return move
