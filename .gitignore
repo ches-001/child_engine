@@ -7,6 +7,7 @@ windows_build
 *.exe
 *.out
 *.o
+*.tar.gz
 test.cpp
 to_build.instruction.txt
 python/submission
