@@ -1172,10 +1172,22 @@ int32_t evaluate_material_balance(chess::Board &board){
     int32_t eval = 0;
     chess::Piece p;
     chess::Bitboard occ = board.occ();
+    chess::Piece piece;
+    chess::Square sq;
+    chess::Color white("w");
+    arr_t<int32_t, 64> psqt;
 
     for(int i = 0; i < 64; i++){
         if(!occ.check(i)){continue;}
-        eval += Constants::PIECE_WEIGHT.at(board.at<chess::Piece>(chess::Square(i)));
+        sq = chess::Square(i);
+        piece = board.at<chess::Piece>(sq);
+        arr_t<int32_t, 64> psqt = *Constants::PSQT.at(piece.type());
+        
+        // Combine piece square table evaluation with Material balance
+        eval += piece.color() == white 
+            ? (*Constants::PSQT.at(piece.type())).at(i)
+            : -(*Constants::PSQT.at(piece.type())).at(sq.relative_square(~white).index());
+        eval += Constants::PIECE_WEIGHT.at(piece);
     }
     return eval;
 }

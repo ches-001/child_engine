@@ -98,6 +98,124 @@ namespace Constants{
         0x2828282828282828ULL, 0x5050505050505050ULL, 0xa0a0a0a0a0a0a0a0ULL, 0x4040404040404040ULL
     }};
 
+    arr_t<int32_t, 64> _PAWN_PSQT = {
+        make_score(   0,   0), make_score(   0,   0), make_score(   0,   0), make_score(   0,   0),
+        make_score(   0,   0), make_score(   0,   0), make_score(   0,   0), make_score(   0,   0),
+        make_score( -13,   7), make_score(  -4,   0), make_score(   1,   4), make_score(   6,   1),
+        make_score(   3,  10), make_score(  -9,   4), make_score(  -9,   3), make_score( -16,   7),
+        make_score( -21,   5), make_score( -17,   6), make_score(  -1,  -6), make_score(  12, -14),
+        make_score(   8, -10), make_score(  -4,  -5), make_score( -15,   7), make_score( -24,  11),
+        make_score( -14,  16), make_score( -21,  17), make_score(   9, -10), make_score(  10, -24),
+        make_score(   4, -22), make_score(   4, -10), make_score( -20,  17), make_score( -17,  18),
+        make_score( -15,  18), make_score( -18,  11), make_score( -16,  -8), make_score(   4, -30),
+        make_score(  -2, -24), make_score( -18,  -9), make_score( -23,  13), make_score( -17,  21),
+        make_score( -20,  48), make_score(  -9,  44), make_score(   1,  31), make_score(  17,  -9),
+        make_score(  36,  -6), make_score(  -9,  31), make_score(  -6,  45), make_score( -23,  49),
+        make_score( -33, -70), make_score( -66,  -9), make_score( -16, -22), make_score(  65, -23),
+        make_score(  41, -18), make_score(  39, -14), make_score( -47,   4), make_score( -62, -51),
+        make_score(   0,   0), make_score(   0,   0), make_score(   0,   0), make_score(   0,   0),
+        make_score(   0,   0), make_score(   0,   0), make_score(   0,   0), make_score(   0,   0),
+    };
+
+    arr_t<int32_t, 64> _KNIGHT_PSQT = {
+        make_score( -31, -38), make_score(  -6, -24), make_score( -20, -22), make_score( -16,  -1),
+        make_score( -11,  -1), make_score( -22, -19), make_score(  -8, -20), make_score( -41, -30),
+        make_score(   1,  -5), make_score( -11,   3), make_score(  -6, -19), make_score(  -1,  -2),
+        make_score(   0,   0), make_score(  -9, -16), make_score(  -8,  -3), make_score(  -6,   1),
+        make_score(   7, -21), make_score(   8,  -5), make_score(   7,   2), make_score(  10,  19),
+        make_score(  10,  19), make_score(   4,   2), make_score(   8,  -4), make_score(   3, -19),
+        make_score(  16,  21), make_score(  17,  30), make_score(  23,  41), make_score(  27,  50),
+        make_score(  24,  53), make_score(  23,  41), make_score(  19,  28), make_score(  13,  26),
+        make_score(  13,  30), make_score(  23,  30), make_score(  37,  51), make_score(  30,  70),
+        make_score(  26,  67), make_score(  38,  50), make_score(  22,  33), make_score(  14,  28),
+        make_score( -24,  25), make_score(  -5,  37), make_score(  25,  56), make_score(  22,  60),
+        make_score(  27,  55), make_score(  29,  55), make_score(  -1,  32), make_score( -19,  25),
+        make_score(  13,  -2), make_score( -11,  18), make_score(  27,  -2), make_score(  37,  24),
+        make_score(  41,  24), make_score(  40,  -7), make_score( -13,  16), make_score(   2,  -2),
+        make_score(-167,  -5), make_score( -91,  12), make_score(-117,  41), make_score( -38,  17),
+        make_score( -18,  19), make_score(-105,  48), make_score(-119,  24), make_score(-165, -17),
+    };
+
+    arr_t<int32_t, 64> _BISHOP_PSQT = {
+        make_score(   5, -21), make_score(   1,   1), make_score(  -1,   5), make_score(   1,   5),
+        make_score(   2,   8), make_score(  -6,  -2), make_score(   0,   1), make_score(   4, -25),
+        make_score(  26, -17), make_score(   2, -31), make_score(  15,  -2), make_score(   8,   8),
+        make_score(   8,   8), make_score(  13,  -3), make_score(   9, -31), make_score(  26, -29),
+        make_score(   9,   3), make_score(  22,   9), make_score(  -5,  -3), make_score(  18,  19),
+        make_score(  17,  20), make_score(  -5,  -6), make_score(  20,   4), make_score(  15,   8),
+        make_score(   0,  12), make_score(  10,  17), make_score(  17,  32), make_score(  20,  32),
+        make_score(  24,  34), make_score(  12,  30), make_score(  15,  17), make_score(   0,  14),
+        make_score( -20,  34), make_score(  13,  31), make_score(   1,  38), make_score(  21,  45),
+        make_score(  12,  46), make_score(   6,  38), make_score(  13,  33), make_score( -14,  37),
+        make_score( -13,  31), make_score( -11,  45), make_score(  -7,  23), make_score(   2,  40),
+        make_score(   8,  38), make_score( -21,  34), make_score(  -5,  46), make_score(  -9,  35),
+        make_score( -59,  38), make_score( -49,  22), make_score( -13,  30), make_score( -35,  36),
+        make_score( -33,  36), make_score( -13,  33), make_score( -68,  21), make_score( -55,  35),
+        make_score( -66,  18), make_score( -65,  36), make_score(-123,  48), make_score(-107,  56),
+        make_score(-112,  53), make_score( -97,  43), make_score( -33,  22), make_score( -74,  15),
+    };
+
+    arr_t<int32_t, 64> _ROOK_PSQT = {
+        make_score( -26,  -1), make_score( -21,   3), make_score( -14,   4), make_score(  -6,  -4),
+        make_score(  -5,  -4), make_score( -10,   3), make_score( -13,  -2), make_score( -22, -14),
+        make_score( -70,   5), make_score( -25, -10), make_score( -18,  -7), make_score( -11, -11),
+        make_score(  -9, -13), make_score( -15, -15), make_score( -15, -17), make_score( -77,   3),
+        make_score( -39,   3), make_score( -16,  14), make_score( -25,   9), make_score( -14,   2),
+        make_score( -12,   3), make_score( -25,   8), make_score(  -4,   9), make_score( -39,   1),
+        make_score( -32,  24), make_score( -21,  36), make_score( -21,  36), make_score(  -5,  26),
+        make_score(  -8,  27), make_score( -19,  34), make_score( -13,  33), make_score( -30,  24),
+        make_score( -22,  46), make_score(   4,  38), make_score(  16,  38), make_score(  35,  30),
+        make_score(  33,  32), make_score(  10,  36), make_score(  17,  31), make_score( -14,  43),
+        make_score( -33,  60), make_score(  17,  41), make_score(   0,  54), make_score(  33,  36),
+        make_score(  29,  35), make_score(   3,  52), make_score(  33,  32), make_score( -26,  56),
+        make_score( -18,  41), make_score( -24,  47), make_score(  -1,  38), make_score(  15,  38),
+        make_score(  14,  37), make_score(  -2,  36), make_score( -24,  49), make_score( -12,  38),
+        make_score(  33,  55), make_score(  24,  63), make_score(  -1,  73), make_score(   9,  66),
+        make_score(  10,  67), make_score(   0,  69), make_score(  34,  59), make_score(  37,  56),
+    };
+
+    arr_t<int32_t, 64> _QUEEN_PSQT = {
+        make_score(  20, -34), make_score(   4, -26), make_score(   9, -34), make_score(  17, -16),
+        make_score(  18, -18), make_score(  14, -46), make_score(   9, -28), make_score(  22, -44),
+        make_score(   6, -15), make_score(  15, -22), make_score(  22, -42), make_score(  13,   2),
+        make_score(  17,   0), make_score(  22, -49), make_score(  18, -29), make_score(   3, -18),
+        make_score(   6,  -1), make_score(  21,   7), make_score(   5,  35), make_score(   0,  34),
+        make_score(   2,  34), make_score(   5,  37), make_score(  24,   9), make_score(  13, -15),
+        make_score(   9,  17), make_score(  12,  46), make_score(  -6,  59), make_score( -19, 109),
+        make_score( -17, 106), make_score(  -4,  57), make_score(  18,  48), make_score(   8,  33),
+        make_score( -10,  42), make_score(  -8,  79), make_score( -19,  66), make_score( -32, 121),
+        make_score( -32, 127), make_score( -23,  80), make_score(  -8,  95), make_score( -10,  68),
+        make_score( -28,  56), make_score( -23,  50), make_score( -33,  66), make_score( -18,  70),
+        make_score( -17,  71), make_score( -19,  63), make_score( -18,  65), make_score( -28,  76),
+        make_score( -16,  61), make_score( -72, 108), make_score( -19,  65), make_score( -52, 114),
+        make_score( -54, 120), make_score( -14,  59), make_score( -69, 116), make_score( -11,  73),
+        make_score(   8,  43), make_score(  19,  47), make_score(   0,  79), make_score(   3,  78),
+        make_score(  -3,  89), make_score(  13,  65), make_score(  18,  79), make_score(  21,  56),
+    };
+
+    arr_t<int32_t, 64> _KING_PSQT = {
+        make_score(  87, -77), make_score(  67, -49), make_score(   4,  -7), make_score(  -9, -26),
+        make_score( -10, -27), make_score(  -8,  -1), make_score(  57, -50), make_score(  79, -82),
+        make_score(  35,   3), make_score( -27,  -3), make_score( -41,  16), make_score( -89,  29),
+        make_score( -64,  26), make_score( -64,  28), make_score( -25,  -3), make_score(  30,  -4),
+        make_score( -44, -19), make_score( -16, -19), make_score(  28,   7), make_score(   0,  35),
+        make_score(  18,  32), make_score(  31,   9), make_score( -13, -18), make_score( -36, -13),
+        make_score( -48, -44), make_score(  98, -39), make_score(  71,  12), make_score( -22,  45),
+        make_score(  12,  41), make_score(  79,  10), make_score( 115, -34), make_score( -59, -38),
+        make_score(  -6, -10), make_score(  95, -39), make_score(  39,  14), make_score( -49,  18),
+        make_score( -27,  19), make_score(  35,  14), make_score(  81, -34), make_score( -50, -13),
+        make_score(  24, -39), make_score( 123, -22), make_score( 105,  -1), make_score( -22, -21),
+        make_score( -39, -20), make_score(  74, -15), make_score( 100, -23), make_score( -17, -49),
+        make_score(   0, -98), make_score(  28, -21), make_score(   7, -18), make_score(  -3, -41),
+        make_score( -57, -39), make_score(  12, -26), make_score(  22, -24), make_score( -15,-119),
+        make_score( -16,-153), make_score(  49, -94), make_score( -21, -73), make_score( -19, -32),
+        make_score( -51, -55), make_score( -42, -62), make_score(  53, -93), make_score( -58,-133),
+    };
+
+    const arr_t<arr_t<int32_t, 64>*, 6> PSQT = {{
+        &_PAWN_PSQT, &_KNIGHT_PSQT, &_BISHOP_PSQT, &_ROOK_PSQT, &_QUEEN_PSQT, &_KING_PSQT
+    }};
+
 
     const arr_t<int32_t, 28> QUEEN_MOBILITY_SCORES = {{
         make_score(-111,-273), make_score(-253,-401), make_score(-127,-228), make_score( -46,-236),
@@ -388,7 +506,7 @@ namespace Constants{
         {55, 54, 53, 52, 51, 50},
         { 0,  0,  0,  0,  0,  0},
     }};
-    // Promotion scores (P, K, B, R, Q)
+    // Promotion scores (P, N, B, R, Q)
     const arr_t<int16_t, 5> PROMOTION_SCORES = {{-10, 10, 20, 30, 40}};
     
     // The indexes of TT_MOVE_SCORES correspond to Exact, Upperbound and Lowebound nodes
