@@ -36,7 +36,6 @@ class ID_PVSearch{
         /** 
          * The technique for implementing PV search with a transposition table can be found in the reference below;
          * REFERENCE: https://en.wikipedia.org/wiki/Negamax#Negamax_with_alpha_beta_pruning_and_transposition_tables 
-         * REFERENCE: https://www.chessprogramming.org/Node_Types#CUT
          * 
          * NOTE: There are some differences between this implementation and the one in the reference, this one
          *  is implemented to accomodate the iterative deepening.
@@ -51,14 +50,25 @@ class ID_PVSearch{
 
             level_n_nodes += 1;
             _set_timedout();
+            int ply = current_search_depth_ - depth;
+
+            // mate distance pruning at NonRoot node
+            if(depth != current_search_depth_){
+                alpha = max(alpha, -Constants::CHECKMATE_SCORE + ply);
+                beta  = min(beta, Constants::CHECKMATE_SCORE - (ply + 1));
+                if (alpha >= beta){
+                    return SearchResult(chess::Move::NO_MOVE, alpha);
+                }
+            }
             
             int16_t alpha_orig = alpha;
             uint64_t hash = board_->hash();
             TTMove tt_move;
+            TTEntry tt_entry;
 
             if(tt_){
-                if(tt_->is_exist(hash)){
-                    TTEntry tt_entry = tt_->unchecked_get(hash);
+                if(!is_pv_node && tt_->is_exist(hash)){
+                    tt_entry = tt_->unchecked_get(hash);
 
                     if(tt_entry.depth >= depth){
                         tt_move.move = tt_entry.tt_move;
@@ -90,7 +100,7 @@ class ID_PVSearch{
                     search_result.score = color *  Constants::CHECKMATE_SCORE;
                     return search_result;
                 }
-                search_result.score = Constants::DRAW_SCORE;
+                search_result.score = color * Constants::DRAW_SCORE;
                 return search_result;
             }
             if(depth == 0 || timedout_){
@@ -101,13 +111,52 @@ class ID_PVSearch{
             chess::Move child_move(chess::Move::NO_MOVE);
             int16_t best_score = -Constants::MAX_AB_VAL;
             PVLine child_pv_moves;
+            bool is_quiet;
 
             for(int i=0; i < legal_moves.size(); i++){
                 select_move(legal_moves, i);
                 child_move = legal_moves[i];
+                is_quiet = is_quiet_move(*board_, child_move);
                 board_->makeMove(child_move);
                 
-                search_result = _search(-color, depth-1, -beta, -alpha, child_pv_moves, i==0 ? is_pv_node : false);
+                if(i > 2 && depth >= 3 && !board_->inCheck() && is_quiet){
+                    int reduction = 1;
+
+                    // we use .to instead of .from in the first index because the move has not been unmade
+                    int16_t hist = history_table_.at(
+                        board_->at<chess::Piece>(child_move.to())
+                    ).at(child_move.to().index());
+
+                    reduction += max(0, reduction - hist / Constants::MAX_HISTORY_SCORE);
+
+                    if(    tt_
+                        && tt_->is_exist(hash) 
+                        && tt_->unchecked_get(hash).entry_type == TTEntry::TTEntryType::LOWERBOUND){
+                        reduction += 2;
+                    }
+
+                    for(chess::Move &killer_move : km_table_.at(ply)){
+                        if(child_move == killer_move){
+                            reduction -= 2;
+                            break;
+                        }
+                    }
+                    int reduced_depth = clamp(depth - reduction, 0, depth - 1);
+                    int pv_size = child_pv_moves.size;
+                    search_result = _search(-color, reduced_depth, -beta, -alpha, child_pv_moves, false);
+
+                    if(-search_result.score > alpha && reduction > 1){
+                        int rollback = child_pv_moves.size - pv_size;
+                        int last_idx = child_pv_moves.size - 1;
+                        for(int i=last_idx; i > (last_idx - rollback); i--){
+                            child_pv_moves.moves[i] = chess::Move::NO_MOVE;
+                        }
+                        child_pv_moves.size = pv_size;
+                        search_result = _search(-color, depth-1, -beta, -alpha, child_pv_moves, false);
+                    }
+                }else{
+                    search_result = _search(-color, depth-1, -beta, -alpha, child_pv_moves, i==0 ? is_pv_node : false);
+                }
                 search_result.score = -search_result.score;
 
                 board_->unmakeMove(child_move);
@@ -169,8 +218,11 @@ class ID_PVSearch{
                 int16_t history_bonus = 100 * depth;
 
                 if(best_score >= beta){
-                    history_bonus *= 3;
+                    history_bonus *= 4;
                     store_killer_move(&km_table_, best_move, ply);
+                }
+                else if (best_score > alpha_orig){
+                    history_bonus *= 2;
                 }
                 update_history(&history_table_, board_->at<chess::Piece>(best_move.from()), best_move.to(), history_bonus);
             }
@@ -265,11 +317,11 @@ class ID_PVSearch{
             return {best_move_, best_score_};
         }
 
-        int max_depth_searched(){
+        inline int max_depth_searched(){
             return current_search_depth_;
         }
 
-        PVLine pv_moves(){
+        inline PVLine pv_moves(){
             return pv_moves_;
         }
 
@@ -295,7 +347,7 @@ class ID_PVSearch{
         }
 };
 
-pair_t<std::string, int16_t> id_pv_search_agent(
+pair_t<pair_t<std::string, int16_t>, int> id_pv_search_agent(
     std::string fen_pos, 
     uint64_t timelimit_ms,
     TranspositionTable *tt=nullptr, 
@@ -306,7 +358,7 @@ pair_t<std::string, int16_t> id_pv_search_agent(
     pair_t<chess::Move, int16_t> search_result;
     ID_PVSearch search = ID_PVSearch(tt);
     search_result = search.run(board, timelimit_ms, log);
-    return {chess::uci::moveToUci(search_result.first), search_result.second};
+    return {{chess::uci::moveToUci(search_result.first), search_result.second}, search.max_depth_searched()};
 }
 
 #endif

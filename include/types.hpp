@@ -4,6 +4,7 @@
 #include <array>
 #include <vector>
 #include <unordered_map>
+#include <tuple>
 #include "../extern/chess.hpp"
 
 namespace Constants{
@@ -54,6 +55,7 @@ struct PVLine{
 
 struct TTEntry{
     public:
+        /** REFERENCE: https://www.chessprogramming.org/Node_Types#CUT */
         enum struct TTEntryType : uint8_t{
             EXACT,      // Also known as PV Nodes (alpha < score < beta)
             UPPERBOUND, // Also known as All-nodes or fail-low nodes (score <= alpha)
@@ -65,6 +67,12 @@ struct TTEntry{
         chess::Move tt_move;
         int16_t tt_score;
         TTEntry::TTEntryType entry_type;
+
+        TTEntry():
+            depth(0),
+            tt_move(chess::Move::NO_MOVE),
+            tt_score(0),
+            entry_type(TTEntryType::NONE){}
 
         TTEntry(
             uint8_t depth, 

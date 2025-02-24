@@ -150,10 +150,9 @@ void store_killer_move(kmt_t *km_table, chess::Move move, int ply){
 }
 
 void update_history(history_t *history_table, chess::Piece piece, chess::Square to, int bonus){
-    const static int16_t MAX_HISTORY_SCORE = 3000;
-    bonus = clamp(bonus, -MAX_HISTORY_SCORE, MAX_HISTORY_SCORE);
+    bonus = clamp(bonus, -Constants::MAX_HISTORY_SCORE, Constants::MAX_HISTORY_SCORE);
     (*history_table).at(piece).at(to.index()) += 
-        bonus - ((*history_table).at(piece).at(to.index()) * abs(bonus) / MAX_HISTORY_SCORE);
+        bonus - ((*history_table).at(piece).at(to.index()) * abs(bonus) / Constants::MAX_HISTORY_SCORE);
 }
 
 chess::Bitboard get_pawn_advance(
@@ -1175,13 +1174,11 @@ int32_t evaluate_material_balance(chess::Board &board){
     chess::Piece piece;
     chess::Square sq;
     chess::Color white("w");
-    arr_t<int32_t, 64> psqt;
 
     for(int i = 0; i < 64; i++){
         if(!occ.check(i)){continue;}
         sq = chess::Square(i);
         piece = board.at<chess::Piece>(sq);
-        arr_t<int32_t, 64> psqt = *Constants::PSQT.at(piece.type());
         
         // Combine piece square table evaluation with Material balance
         eval += piece.color() == white 

@@ -53,7 +53,7 @@ namespace Constants{
     }};
 
     const int16_t DRAW_SCORE      = 0;
-    const int16_t CHECKMATE_SCORE = 20000;
+    const int16_t CHECKMATE_SCORE = 32000;
     const int16_t MAX_AB_VAL      = 32000;
     
     const uint64_t WHITE_SQUARES       = 0x55aa55aa55aa55aaULL;
@@ -518,7 +518,7 @@ namespace Constants{
     const int16_t PV_MOVE_SCORE     = 300;
     const int16_t CASTLING_SCORE    =  50;
     const int16_t KILLER_MOVE_SCORE =  10;
-    const int16_t MAX_HISTORY_SCORE =  10;
+    const int16_t MAX_HISTORY_SCORE =  1000;
 
 
     // bonus or penalty values for various scenarios
